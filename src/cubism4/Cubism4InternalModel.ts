@@ -24,7 +24,7 @@ import { Matrix } from '@pixi/math';
 import { Mutable } from '../types/helpers';
 
 
-import { clamp } from '@/utils';
+import { clamp, logger } from '@/utils';
 
 const tempMatrix = new CubismMatrix44();
 
@@ -213,6 +213,8 @@ export class Cubism4InternalModel extends InternalModel {
 
         // revert the timestamps to be milliseconds
         this.updateNaturalMovements(dt * 1000, now * 1000);
+        
+        logger.log('lipsync','check motionManager : '+this.motionManager.currentAudio)
 
         // TODO: Add lip sync API
         if (this.lipSync && this.motionManager.currentAudio) {

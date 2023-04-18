@@ -584,6 +584,7 @@ class MotionManager extends EventEmitter {
   startMotion(_0, _1) {
     return __async(this, arguments, function* (group, index, priority = MotionPriority.NORMAL, sound) {
       var _a;
+      logger.log(this.tag, sound);
       if (this.currentAudio) {
         if (!this.currentAudio.ended) {
           return false;
@@ -603,9 +604,11 @@ class MotionManager extends EventEmitter {
       let analyzer;
       let context;
       if (config.sound) {
+        logger.log(this.tag, "has sound");
         const isUrlPath = sound && sound.startsWith("http");
         const isBase64Content = sound && sound.startsWith("data:audio/wav;base64");
-        const soundURL = this.getSoundFile(definition);
+        const soundURL = sound ? sound : this.getSoundFile(definition);
+        logger.log(this.tag, "check soundURL", soundURL);
         let file = soundURL;
         if (soundURL) {
           file = this.settings.resolveURL(soundURL) + "?cache-buster=" + new Date().getTime();
@@ -615,7 +618,10 @@ class MotionManager extends EventEmitter {
         }
         if (file) {
           try {
-            audio = SoundManager.add(file);
+            logger.log(this.tag, "has file prepare run");
+            audio = SoundManager.add(
+              file
+            );
             this.currentAudio = audio;
             context = SoundManager.addContext(this.currentAudio);
             this.currentContext = context;
@@ -628,6 +634,7 @@ class MotionManager extends EventEmitter {
       }
       const motion = yield this.loadMotion(group, index);
       if (audio) {
+        console.log("[in startMotion] audio ", audio);
         priority = 3;
         const readyToPlay = SoundManager.play(audio).catch((e) => logger.warn(this.tag, "Failed to play audio", audio.src, e));
         if (config.motionSync) {
@@ -737,10 +744,13 @@ class InternalModel extends EventEmitter {
     const size = this.getSize();
     self.originalWidth = size[0];
     self.originalHeight = size[1];
-    const layout = Object.assign({
-      width: LOGICAL_WIDTH,
-      height: LOGICAL_HEIGHT
-    }, this.getLayout());
+    const layout = Object.assign(
+      {
+        width: LOGICAL_WIDTH,
+        height: LOGICAL_HEIGHT
+      },
+      this.getLayout()
+    );
     this.localTransform.scale(layout.width / LOGICAL_WIDTH, layout.height / LOGICAL_HEIGHT);
     self.width = this.originalWidth * this.localTransform.a;
     self.height = this.originalHeight * this.localTransform.d;
@@ -866,10 +876,16 @@ XHRLoader.xhrMap = /* @__PURE__ */ new WeakMap();
 XHRLoader.allXhrSet = /* @__PURE__ */ new Set();
 XHRLoader.loader = (context, next) => {
   return new Promise((resolve, reject) => {
-    const xhr = _XHRLoader.createXHR(context.target, context.settings ? context.settings.resolveURL(context.url) : context.url, context.type, (data) => {
-      context.result = data;
-      resolve();
-    }, reject);
+    const xhr = _XHRLoader.createXHR(
+      context.target,
+      context.settings ? context.settings.resolveURL(context.url) : context.url,
+      context.type,
+      (data) => {
+        context.result = data;
+        resolve();
+      },
+      reject
+    );
     xhr.send();
   });
 };
@@ -976,32 +992,36 @@ const setupOptionals = (context, next) => __async(void 0, null, function* () {
     if (runtime) {
       const tasks = [];
       if (settings.pose) {
-        tasks.push(Live2DLoader.load({
-          settings,
-          url: settings.pose,
-          type: "json",
-          target: internalModel
-        }).then((data) => {
-          internalModel.pose = runtime.createPose(internalModel.coreModel, data);
-          context.live2dModel.emit("poseLoaded", internalModel.pose);
-        }).catch((e) => {
-          context.live2dModel.emit("poseLoadError", e);
-          logger.warn(TAG, "Failed to load pose.", e);
-        }));
+        tasks.push(
+          Live2DLoader.load({
+            settings,
+            url: settings.pose,
+            type: "json",
+            target: internalModel
+          }).then((data) => {
+            internalModel.pose = runtime.createPose(internalModel.coreModel, data);
+            context.live2dModel.emit("poseLoaded", internalModel.pose);
+          }).catch((e) => {
+            context.live2dModel.emit("poseLoadError", e);
+            logger.warn(TAG, "Failed to load pose.", e);
+          })
+        );
       }
       if (settings.physics) {
-        tasks.push(Live2DLoader.load({
-          settings,
-          url: settings.physics,
-          type: "json",
-          target: internalModel
-        }).then((data) => {
-          internalModel.physics = runtime.createPhysics(internalModel.coreModel, data);
-          context.live2dModel.emit("physicsLoaded", internalModel.physics);
-        }).catch((e) => {
-          context.live2dModel.emit("physicsLoadError", e);
-          logger.warn(TAG, "Failed to load physics.", e);
-        }));
+        tasks.push(
+          Live2DLoader.load({
+            settings,
+            url: settings.physics,
+            type: "json",
+            target: internalModel
+          }).then((data) => {
+            internalModel.physics = runtime.createPhysics(internalModel.coreModel, data);
+            context.live2dModel.emit("physicsLoaded", internalModel.physics);
+          }).catch((e) => {
+            context.live2dModel.emit("physicsLoadError", e);
+            logger.warn(TAG, "Failed to load physics.", e);
+          })
+        );
       }
       if (tasks.length) {
         yield Promise.all(tasks);
@@ -2087,13 +2107,15 @@ class Live2DPose {
     this.opacityAnimDuration = 500;
     this.partsGroups = [];
     if (json.parts_visible) {
-      this.partsGroups = json.parts_visible.map(({ group }) => group.map(({ id, link }) => {
-        const parts = new Live2DPartsParam(id);
-        if (link) {
-          parts.link = link.map((l) => new Live2DPartsParam(l));
-        }
-        return parts;
-      }));
+      this.partsGroups = json.parts_visible.map(
+        ({ group }) => group.map(({ id, link }) => {
+          const parts = new Live2DPartsParam(id);
+          if (link) {
+            parts.link = link.map((l) => new Live2DPartsParam(l));
+          }
+          return parts;
+        })
+      );
       this.init();
     }
   }
@@ -2117,7 +2139,9 @@ class Live2DPose {
     const phi = 0.5;
     const maxBackOpacity = 0.15;
     let visibleOpacity = 1;
-    let visibleIndex = partsGroup.findIndex(({ paramIndex, partsIndex }) => partsIndex >= 0 && model.getParamFloat(paramIndex) !== 0);
+    let visibleIndex = partsGroup.findIndex(
+      ({ paramIndex, partsIndex }) => partsIndex >= 0 && model.getParamFloat(paramIndex) !== 0
+    );
     if (visibleIndex >= 0) {
       const originalOpacity = model.getPartsOpacity(partsGroup[visibleIndex].partsIndex);
       visibleOpacity = clamp(originalOpacity + dt / this.opacityAnimDuration, 0, 1);

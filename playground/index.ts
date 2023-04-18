@@ -1,42 +1,48 @@
-// run this to tell git not to track this file
-// git update-index --skip-worktree test/playground/index.ts
+import { Application } from "pixi.js";
+import { Live2DModel } from "../src";
+import Live2D from "./Live2D";
+import './Message';
 
-import { Application, Ticker } from 'pixi.js';
-import { Live2DModel } from '../src';
 
-Live2DModel.registerTicker(Ticker);
-
-const canvas = document.getElementById('canvas') as HTMLCanvasElement;
-const modelURL = 'https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model/Live2D/Senko_Normals/senko.model3.json';
-
-async function main() {
-    const app = new Application({
-        resizeTo: window,
-        view: canvas,
-    });
-    (window as any).app = app;
-
-    const model = await Live2DModel.from(modelURL);
-
-    app.stage.addChild(model);
+export interface SpeechRecognition {
+  continuous: Boolean;
+  interimResults: Boolean;
+  lang: string;
+  maxAlternatives: number;
+  recording: Boolean;
+  transcription: string;
+  start: Function;
+  stop: Function;
+  onerror: Function;
+  onend: Function;
+  onresult: Function;
+  onstart: Function;
 }
 
-main().then();
-
-function checkbox(name: string, onChange: (checked: boolean) => void) {
-    const id = name.replace(/\W/g, '').toLowerCase();
-
-    document.getElementById('control')!.innerHTML += `
-<p>
-  <input type="checkbox" id="${id}">
-  <label for="${id}">${name}</label>
-</p>`;
-
-    const checkbox = document.getElementById(id) as HTMLInputElement;
-
-    checkbox.addEventListener('change', (ev) => {
-        onChange(checkbox.checked);
-    });
-
-    onChange(checkbox.checked);
+export interface SpeechRecognitionEvent {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
 }
+
+export interface CustomWindow extends Window {
+  SpeechRecognition: SpeechRecognition | null;
+  webkitSpeechRecognition: SpeechRecognition | null;
+  Modules: {
+    live2d: {
+      app: Application,
+      model: Live2DModel
+    };
+    // nlp: any;
+    // recognition: SpeechRecognition;
+  }
+}
+
+declare const window: CustomWindow;
+
+window.Modules = {
+  live2d: Live2D,
+//   nlp: NLP,
+//   recognition: SpeechRecognition,
+};
+
+document.getElementById('loader')!.style.display = 'none';

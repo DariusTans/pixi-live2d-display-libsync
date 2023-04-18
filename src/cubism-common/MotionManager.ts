@@ -219,6 +219,7 @@ export abstract class MotionManager<Motion = any, MotionSpec = any> extends Even
      */
     async startMotion(group: string, index: number, priority = MotionPriority.NORMAL, sound?: string): Promise<boolean> {
         // Do not start a new motion if audio is still playing
+        logger.log(this.tag, sound)
         if(this.currentAudio){
             if (!this.currentAudio.ended){
                 return false;
@@ -230,6 +231,7 @@ export abstract class MotionManager<Motion = any, MotionSpec = any> extends Even
         }
 
         const definition = this.definitions[group]?.[index];
+
 
         if (!definition) {
             return false;
@@ -245,10 +247,13 @@ export abstract class MotionManager<Motion = any, MotionSpec = any> extends Even
         let context: AudioContext | undefined;
 
         if (config.sound) {
+            logger.log(this.tag,'has sound')
             const isUrlPath = sound && sound.startsWith('http');
             const isBase64Content = sound && sound.startsWith('data:audio/wav;base64');
-            const soundURL = this.getSoundFile(definition);
-            let file = soundURL;
+            // const soundURL = this.getSoundFile(definition);
+            const soundURL = sound? sound : this.getSoundFile(definition)
+            logger.log(this.tag,'check soundURL', soundURL)
+            let file = soundURL;    
             if (soundURL) {
                 file = this.settings.resolveURL(soundURL) + "?cache-buster=" + new Date().getTime();
             }
@@ -257,6 +262,7 @@ export abstract class MotionManager<Motion = any, MotionSpec = any> extends Even
             }
             if (file) {
                 try {
+                    logger.log(this.tag,'has file prepare run')
                     // start to load the audio
                     audio = SoundManager.add(
                         file,
@@ -278,10 +284,23 @@ export abstract class MotionManager<Motion = any, MotionSpec = any> extends Even
                 }
             }
         }
+        
+        // //force set audio , current
+        // audio = SoundManager.add(sound!)
+        // this.currentAudio = audio!
+        
+        // // Add context
+        // context = SoundManager.addContext(this.currentAudio);
+        // this.currentContext = context;
+        
+        // // Add analyzer
+        // analyzer = SoundManager.addAnalyzer(this.currentAudio, this.currentContext);
+        // this.currentAnalyzer = analyzer;
 
         const motion = await this.loadMotion(group, index);
 
         if (audio) {
+            console.log('[in startMotion] audio ',audio)
             priority = 3; // FORCED: MAKE SURE SOUND IS PLAYED
             
             const readyToPlay = SoundManager.play(audio)
